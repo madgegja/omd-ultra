@@ -5,13 +5,16 @@ import { applyOverrides } from '../../../src/core/customizer.js';
 describe('applyOverrides', () => {
   const ref = loadReference('stripe');
 
-  it('should return original content in as-is mode', () => {
+  it('should return original content in as-is mode, with shadcn token block appended', () => {
     const { designMd } = applyOverrides(ref, { darkMode: false }, 'as-is');
     expect(designMd).toContain('Stripe');
     expect(designMd).toContain('## 1. Visual Theme');
-    // OmD v0.1: DESIGN.md is spec-only; shadcn/ui CSS is generated separately
-    // via shadcnCss return value and no longer appended to the document body.
-    expect(designMd).not.toContain('## 10. shadcn/ui Theme');
+    // omd-ultra: DESIGN.md includes a shadcn :root{} block so downstream
+    // tooling (omd-ultra scaffold) can parse it as the authoritative
+    // token source (see spec/omd-ultra-v0.1.md § 2).
+    expect(designMd).toContain('## 10. shadcn/ui Theme');
+    expect(designMd).toContain(':root {');
+    expect(designMd).toContain('--primary:');
   });
 
   it('should replace primary color in customized mode', () => {

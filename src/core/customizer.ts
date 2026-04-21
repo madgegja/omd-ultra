@@ -64,8 +64,11 @@ export function applyOverrides(
   // Append iconography section
   md += buildIconographySection();
 
-  // Generate shadcn CSS for preview data only (no longer appended to DESIGN.md)
+  // Generate shadcn CSS. Also appended to DESIGN.md so that downstream
+  // tooling (omd-ultra scaffold, etc.) can parse a stable :root{} block
+  // as the authoritative token source per spec omd-ultra-v0.1 § 2.
   const shadcnCss = generateShadcnCss(effectivePrimary, effectiveBg, effectiveFg, effectiveRadius, ref, overrides);
+  md += buildShadcnSection(shadcnCss);
 
   // Append document policies
   md += buildDocumentPolicies();

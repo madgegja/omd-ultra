@@ -15,6 +15,8 @@ import { parseDesignMd } from './parse-design.js';
 import { emitShadcn } from './shadcn-emitter.js';
 import { collectRadixDeps } from './radix-wrapper.js';
 
+// Default set = components that have a working template as of this MVP.
+// Select / dropdown-menu / etc. will land in a follow-up; opt-in via --components.
 const DEFAULT_COMPONENTS: ComponentId[] = [
   'button',
   'input',
@@ -22,7 +24,6 @@ const DEFAULT_COMPONENTS: ComponentId[] = [
   'dialog',
   'popover',
   'tooltip',
-  'select',
   'tabs',
 ];
 
@@ -30,14 +31,32 @@ export function runScaffold(input: ScaffoldInput): ScaffoldPlan {
   const markdown = readFileSync(input.designMdPath, 'utf-8');
   const design = parseDesignMd(markdown);
 
-  const components = input.components ?? DEFAULT_COMPONENTS;
-  const writes = emitShadcn({ design, components });
+  const requested = input.components ?? DEFAULT_COMPONENTS;
+  const writes = emitShadcn({ design, components: requested });
 
   const warnings: string[] = [];
-  const deps = collectRadixDeps(components);
-  if (deps.length > 0) {
+
+  // Detect components that were requested but skipped because no template exists yet.
+  const emittedIds = new Set(
+    writes
+      .filter((w) => w.kind === 'component')
+      .map((w) => w.path.replace(/^components\/ui\//, '').replace(/\.tsx$/, '')),
+  );
+  const skipped = requested.filter((id) => !emittedIds.has(id));
+  if (skipped.length > 0) {
     warnings.push(
-      `Install Radix deps: npm i ${deps.join(' ')}`,
+      `No template yet for: ${skipped.join(', ')} — open an issue or contribute a wrapper.`,
+    );
+  }
+
+  // Base runtime deps are required whenever we emit any component
+  // (cn() uses clsx + tailwind-merge; Button uses cva).
+  const emittedComponents = requested.filter((id) => emittedIds.has(id));
+  if (emittedComponents.length > 0) {
+    const baseDeps = ['clsx', 'tailwind-merge', 'class-variance-authority'];
+    const radixDeps = collectRadixDeps(emittedComponents);
+    warnings.push(
+      `Install runtime deps: npm i ${[...baseDeps, ...radixDeps].join(' ')}`,
     );
   }
 
