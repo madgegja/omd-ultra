@@ -1,0 +1,364 @@
+import { hslString, contrastForeground, generateColorScale, lighten, darken, hexToHsl, hslToHex, generateChartColors } from './color';
+import type { Overrides, StylePreferences } from './types';
+
+export function generateShadcnCss(
+  primary: string,
+  background: string,
+  foreground: string,
+  radius: string,
+  accent: string | undefined,
+  border: string | undefined,
+  darkMode: boolean,
+): string {
+  const scale = generateColorScale(primary);
+  const [h] = hexToHsl(primary);
+  const effectiveAccent = accent || hslToHex((h + 30) % 360, 60, 55);
+  const effectiveBorder = border || lighten(foreground, 75);
+  const muted = background === '#ffffff' ? '#f5f5f5' : lighten(background, 5);
+  const chart = generateChartColors(primary);
+  const radiusRem = radius === '9999px' ? '9999px' : `${parseInt(radius) / 16}rem`;
+
+  const lightVars: Record<string, string> = {
+    '--background': hslString(background),
+    '--foreground': hslString(foreground),
+    '--card': hslString(background === '#ffffff' ? '#ffffff' : lighten(background, 3)),
+    '--card-foreground': hslString(foreground),
+    '--popover': hslString(background === '#ffffff' ? '#ffffff' : lighten(background, 5)),
+    '--popover-foreground': hslString(foreground),
+    '--primary': hslString(primary),
+    '--primary-foreground': hslString(contrastForeground(primary)),
+    '--secondary': hslString(scale['100']),
+    '--secondary-foreground': hslString(foreground),
+    '--muted': hslString(muted),
+    '--muted-foreground': hslString(lighten(foreground, 40)),
+    '--accent': hslString(effectiveAccent),
+    '--accent-foreground': hslString(contrastForeground(effectiveAccent)),
+    '--destructive': hslString('#ef4444'),
+    '--destructive-foreground': hslString('#fafafa'),
+    '--border': hslString(effectiveBorder),
+    '--input': hslString(effectiveBorder),
+    '--ring': hslString(primary),
+    '--radius': radiusRem,
+    '--chart-1': hslString(chart[0]),
+    '--chart-2': hslString(chart[1]),
+    '--chart-3': hslString(chart[2]),
+    '--chart-4': hslString(chart[3]),
+    '--chart-5': hslString(chart[4]),
+  };
+
+  let css = '@layer base {\n  :root {\n';
+  for (const [k, v] of Object.entries(lightVars)) css += `    ${k}: ${v};\n`;
+  css += '  }\n';
+
+  if (darkMode) {
+    const darkBg = hslToHex(h, 15, 7);
+    const darkBorder = hslToHex(h, 10, 18);
+    const darkVars: Record<string, string> = {
+      '--background': hslString(darkBg),
+      '--foreground': hslString('#fafafa'),
+      '--card': hslString(lighten(darkBg, 3)),
+      '--card-foreground': hslString('#fafafa'),
+      '--popover': hslString(lighten(darkBg, 5)),
+      '--popover-foreground': hslString('#fafafa'),
+      '--primary': hslString(primary),
+      '--primary-foreground': hslString(contrastForeground(primary)),
+      '--secondary': hslString(hslToHex(h, 15, 20)),
+      '--secondary-foreground': hslString('#fafafa'),
+      '--muted': hslString(hslToHex(h, 10, 15)),
+      '--muted-foreground': hslString(darken('#fafafa', 35)),
+      '--accent': hslString(effectiveAccent),
+      '--accent-foreground': hslString(contrastForeground(effectiveAccent)),
+      '--destructive': hslString('#ef4444'),
+      '--destructive-foreground': hslString('#fafafa'),
+      '--border': hslString(darkBorder),
+      '--input': hslString(lighten(darkBorder, 5)),
+      '--ring': hslString(primary),
+      '--chart-1': hslString(chart[0]),
+      '--chart-2': hslString(chart[1]),
+      '--chart-3': hslString(chart[2]),
+      '--chart-4': hslString(chart[3]),
+      '--chart-5': hslString(chart[4]),
+    };
+    css += '\n  .dark {\n';
+    for (const [k, v] of Object.entries(darkVars)) css += `    ${k}: ${v};\n`;
+    css += '  }\n';
+  }
+  css += '}';
+  return css;
+}
+
+/**
+ * Generate vanilla CSS (no Tailwind/shadcn dependency).
+ * Uses standard CSS custom properties with hex values.
+ */
+export function generateVanillaCss(
+  primary: string,
+  background: string,
+  foreground: string,
+  radius: string,
+  accent: string | undefined,
+  border: string | undefined,
+  darkMode: boolean,
+  fontFamily?: string,
+): string {
+  const scale = generateColorScale(primary);
+  const [h] = hexToHsl(primary);
+  const effectiveAccent = accent || hslToHex((h + 30) % 360, 60, 55);
+  const effectiveBorder = border || lighten(foreground, 75);
+  const muted = background === '#ffffff' ? '#f5f5f5' : lighten(background, 5);
+  const chart = generateChartColors(primary);
+  const radiusVal = radius === '9999px' ? '9999px' : radius;
+  const font = fontFamily || 'system-ui, -apple-system, sans-serif';
+
+  let css = `:root {
+  /* Colors */
+  --color-primary: ${primary};
+  --color-primary-foreground: ${contrastForeground(primary)};
+  --color-background: ${background};
+  --color-foreground: ${foreground};
+  --color-accent: ${effectiveAccent};
+  --color-accent-foreground: ${contrastForeground(effectiveAccent)};
+  --color-muted: ${muted};
+  --color-muted-foreground: ${lighten(foreground, 40)};
+  --color-border: ${effectiveBorder};
+  --color-destructive: #ef4444;
+  --color-success: #22c55e;
+
+  /* Primary Scale */
+${Object.entries(scale).map(([stop, hex]) => `  --color-primary-${stop}: ${hex};`).join('\n')}
+
+  /* Chart Colors */
+${chart.map((c, i) => `  --color-chart-${i + 1}: ${c};`).join('\n')}
+
+  /* Typography */
+  --font-sans: ${font};
+  --font-mono: ui-monospace, "SF Mono", monospace;
+
+  /* Spacing & Radius */
+  --radius-sm: ${parseInt(radiusVal) > 4 ? `${parseInt(radiusVal) - 2}px` : '2px'};
+  --radius-md: ${radiusVal};
+  --radius-lg: ${parseInt(radiusVal) > 4 ? `${parseInt(radiusVal) + 4}px` : radiusVal};
+  --radius-full: 9999px;
+}`;
+
+  if (darkMode) {
+    const darkBg = hslToHex(h, 15, 7);
+    const darkBorder = hslToHex(h, 10, 18);
+    css += `
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: ${darkBg};
+    --color-foreground: #fafafa;
+    --color-muted: ${hslToHex(h, 10, 15)};
+    --color-muted-foreground: ${darken('#fafafa', 35)};
+    --color-border: ${darkBorder};
+  }
+}`;
+  }
+
+  return css;
+}
+
+export function applyOverridesToMd(
+  md: string,
+  refName: string,
+  originalPrimary: string,
+  originalFont: string,
+  overrides: Overrides,
+  components?: string[],
+  stylePreferences?: StylePreferences,
+  includePhilosophyLayer: boolean = true,
+): string {
+  // Direct replacement — AI agents need one source of truth, no ambiguity.
+  let result = md;
+
+  // OmD v0.1 Philosophy Layer opt-out.
+  // When disabled, strip sections 10–15 (Voice, Narrative, Principles,
+  // Personas, States, Motion) plus the HTML-comment Sources block that
+  // follows. The range is anchored by the "## 10. Voice & Tone" header
+  // and the "OmD v0.1 Sources" comment end — if the file doesn't carry
+  // a Philosophy Layer, the regex simply doesn't match and nothing is
+  // stripped.
+  if (!includePhilosophyLayer) {
+    result = result.replace(
+      /\n+---\n+## 10\. Voice & Tone[\s\S]*?OmD v0\.1 Sources[\s\S]*?-->\n?/,
+      '\n'
+    );
+  }
+
+  // Strip emojis. The unicode range covers ✅ (U+2705) and ❌ (U+274C) too,
+  // so any DO:/DON'T: prefix conversion would never match — references use
+  // explicit "**DO**" / "**DON'T**" markdown instead.
+  result = result.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1FA00}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '');
+
+  // Replace title
+  result = result.replace(/^# .+$/m, `# Custom Design System (based on ${refName})`);
+
+  // Replace values directly in body text
+  if (overrides.primaryColor && overrides.primaryColor !== originalPrimary) {
+    const re = new RegExp(originalPrimary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    result = re[Symbol.replace](result, overrides.primaryColor);
+  }
+  if (overrides.fontFamily && overrides.fontFamily !== originalFont) {
+    result = result.replaceAll(originalFont, overrides.fontFamily);
+  }
+
+  // ── Inline modification: rewrite subsections to match user preferences ──
+  if (stylePreferences) {
+    // Replace Inputs & Forms subsection in Section 4
+    if (stylePreferences.inputStyle === 'underline') {
+      result = result.replace(
+        /### Inputs & Forms\n[\s\S]*?(?=###|\n## \d+\.)/,
+        `### Inputs & Forms\n- Style: Underline -- bottom border only, no side or top borders\n- Border-bottom: 2px solid border color, no border-radius on the field itself\n- Focus: bottom border thickens or shifts to primary color\n- Text: foreground color, Placeholder: muted-foreground\n- No background fill -- transparent base\n\n`
+      );
+    }
+
+    // Replace Navigation subsection in Section 4
+    if (stylePreferences.headerStyle === 'glass') {
+      result = result.replace(
+        /### Navigation\n[\s\S]*?(?=###|\n## \d+\.)/,
+        (match) => {
+          if (/transparent|blur|glass/i.test(match)) return match; // already glass
+          return `### Navigation\n- Style: Glass & Floating -- transparent background with backdrop-filter: blur(12px)\n- Border-bottom only (1px border color), no solid fill\n- Header floats above content, text inherits foreground color\n- CTA button uses primary color, right-aligned\n- Mobile: hamburger menu collapse\n\n`;
+        }
+      );
+    } else if (stylePreferences.headerStyle === 'solid') {
+      result = result.replace(
+        /### Navigation\n[\s\S]*?(?=###|\n## \d+\.)/,
+        (match) => {
+          if (/solid.*?dark|dark.*?background|dark\s+nav/i.test(match)) return match; // already solid
+          return `### Navigation\n- Style: Solid & Bold -- solid dark background (foreground color), high contrast\n- Light text on dark header surface, clear visual separation from content\n- CTA button uses primary color or inverted colors\n- Mobile: hamburger menu collapse\n\n`;
+        }
+      );
+    }
+
+    // Replace Cards subsection shadow description in Section 4
+    if (stylePreferences.cardStyle === 'bordered') {
+      result = result.replace(
+        /(### Cards & Containers\n[\s\S]*?)Shadow:.*?\n/,
+        '$1Shadow: none -- use border for definition, flat hierarchy\n'
+      );
+    }
+
+    // Modify Section 5 spacing for density preference
+    if (stylePreferences.density === 'compact') {
+      result = result.replace(
+        /### Whitespace Philosophy\n[\s\S]*?(?=###|\n## \d+\.)/,
+        `### Whitespace Philosophy\n- **Compact & dense**: Optimize for information density and scanning speed. Tight padding (8-12px), small gaps (4-8px between related items).\n- **Reduced section spacing**: Use ~70% of the reference spacing values for a data-focused, efficient layout.\n- **Screen real estate**: Maximize visible content per viewport -- users should see more items without scrolling.\n\n`
+      );
+    } else if (stylePreferences.density === 'spacious') {
+      result = result.replace(
+        /### Whitespace Philosophy\n[\s\S]*?(?=###|\n## \d+\.)/,
+        (match) => {
+          if (/generous|spacious|breathing/i.test(match)) return match; // already spacious
+          return `### Whitespace Philosophy\n- **Open & spacious**: Generous padding (16-24px), large gaps (12-20px) between content blocks.\n- **Breathing room**: Prioritize visual clarity over density. Use 1.5-2x standard section spacing.\n- **Premium feel**: Whitespace communicates quality -- let content breathe rather than cramming.\n\n`;
+        }
+      );
+    }
+
+    // Replace radius values in Section 4 when user chose a different radius
+    if (overrides.borderRadius) {
+      const chosenPx = parseInt(overrides.borderRadius);
+      // Replace "Radius: Npx" patterns in component descriptions (but not radius scale tables)
+      result = result.replace(/(?<=^[-*].*?)Radius:\s*\d+px/gim, `Radius: ${overrides.borderRadius}`);
+      // Replace "rounded-Npx" or "Npx radius" in inline descriptions
+      result = result.replace(/(\d+)px\s*(?:\(standard\)|\(buttons?\)|\(cards?\))/gi, (match, px) => {
+        const orig = parseInt(px);
+        if (orig === 9999 || orig === 50) return match; // don't touch pills/circles
+        return `${overrides.borderRadius} (customized)`;
+      });
+    }
+  }
+
+  // Append component list
+  if (components && components.length > 0) {
+    result += `\n\n---\n\n## Included Components\n\nThe following components are part of this design system:\n\n`;
+    result += components.map(c => `- ${c.charAt(0).toUpperCase() + c.slice(1).replace(/-/g, ' ')}`).join('\n');
+    result += '\n';
+  }
+
+  // Append additional sections
+  result += buildIconographySection();
+  result += buildDocumentPolicies();
+  return result;
+}
+
+function buildIconographySection(): string {
+  return `
+
+---
+
+## Iconography & SVG Guidelines
+
+### Icon Library
+
+Use a single, consistent icon library throughout the project. Recommended options:
+
+- **Lucide React** (\`lucide-react\`): Default for shadcn/ui projects. 1,400+ icons, tree-shakeable, consistent 24x24 grid.
+- **Radix Icons** (\`@radix-ui/react-icons\`): 300+ icons, 15x15 grid, minimal and geometric.
+- **Heroicons** (\`@heroicons/react\`): 300+ icons by Tailwind team, outline and solid variants.
+
+Pick ONE library and use it everywhere. Do not mix icon libraries within the same project.
+
+### SVG Usage Rules
+
+- All icons must be inline SVG components (not \`<img>\` tags) for color and size control.
+- Icon size follows the type scale: 16px (inline), 20px (buttons), 24px (standalone).
+- Icon color inherits from \`currentColor\` -- never hard-code fill/stroke colors.
+- For custom/brand icons, export as SVG components with \`currentColor\` fills.
+- Stroke width: 1.5px-2px for outline icons. Keep consistent across the project.
+
+### Icon Sizing Scale
+
+| Context | Size | Usage |
+|---------|------|-------|
+| Inline text | 16px (1rem) | Badges, labels, breadcrumbs |
+| Button icon | 18px (1.125rem) | Icon buttons, CTA icons |
+| Standalone | 24px (1.5rem) | Navigation, card icons |
+| Feature | 32-48px | Hero sections, empty states |
+
+### SVG Optimization
+
+- Run all custom SVGs through SVGO before committing.
+- Remove unnecessary attributes: \`xmlns\`, \`xml:space\`, editor metadata.
+- Use \`viewBox\` instead of fixed \`width\`/\`height\` for scalability.
+`;
+}
+
+function buildDocumentPolicies(): string {
+  return `
+
+---
+
+## Document Policies
+
+### No Emojis
+
+This design system must not use emojis in any UI element, component, label, status indicator, or documentation.
+Use SVG icons from the chosen icon library instead. Emojis render inconsistently across platforms and break visual coherence.
+
+- Status indicators: use colored dots or icon components, not emoji.
+- Section markers: use text prefixes ("DO:" / "DON'T:") or icons, not checkmark/cross emojis.
+- Navigation: use icon components, not emoji.
+
+### Format Compliance
+
+This document follows the Google Stitch DESIGN.md 9-section format:
+1. Visual Theme & Atmosphere
+2. Color Palette & Roles
+3. Typography Rules
+4. Component Stylings
+5. Layout Principles
+6. Depth & Elevation
+7. Do's and Don'ts
+8. Responsive Behavior
+9. Agent Prompt Guide
+
+Extended with:
+- Iconography & SVG Guidelines
+- Document Policies
+
+Total target length: 250-400 lines. Keep sections concise and actionable.
+`;
+}
