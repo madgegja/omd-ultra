@@ -67,7 +67,15 @@ export function applyOverrides(
   // Generate shadcn CSS. Also appended to DESIGN.md so that downstream
   // tooling (omd-ultra scaffold, etc.) can parse a stable :root{} block
   // as the authoritative token source per spec omd-ultra-v0.1 § 2.
-  const shadcnCss = generateShadcnCss(effectivePrimary, effectiveBg, effectiveFg, effectiveRadius, ref, overrides);
+  const shadcnCss = generateShadcnCss(
+    effectivePrimary,
+    effectiveBg,
+    effectiveFg,
+    effectiveRadius,
+    ref,
+    overrides,
+    effectiveFont,
+  );
   md += buildShadcnSection(shadcnCss);
 
   // Append document policies
@@ -160,6 +168,7 @@ function generateShadcnCss(
   radius: string,
   ref: ReferenceEntry,
   overrides: CustomOverrides,
+  fontSans?: string,
 ): string {
   const scale = generateColorScale(primary);
   const accent = ref.colors.accent || hslToHex((hexToHsl(primary)[0] + 30) % 360, 60, 55);
@@ -196,6 +205,16 @@ function generateShadcnCss(
     '--chart-3': hslString(chart[2]),
     '--chart-4': hslString(chart[3]),
     '--chart-5': hslString(chart[4]),
+    // Typography tokens — omd-ultra extension beyond base shadcn.
+    '--font-sans': buildFontStack(fontSans || ref.typography.primary, 'sans'),
+    '--font-mono': buildFontStack(ref.typography.mono, 'mono'),
+    // Motion tokens — omd-ultra extension. Generic defaults; override in
+    // project-level DESIGN.md once § 15 per-brand parsing lands.
+    '--duration-fast': '120ms',
+    '--duration-normal': '200ms',
+    '--duration-slow': '320ms',
+    '--ease-standard': 'cubic-bezier(0.4, 0, 0.2, 1)',
+    '--ease-emphasized': 'cubic-bezier(0.2, 0, 0, 1)',
   };
 
   const lines = ['@layer base {', '  :root {'];
@@ -246,6 +265,25 @@ function generateShadcnCss(
 
   lines.push('}');
   return lines.join('\n');
+}
+
+// Build a CSS font-family stack from a brand family name, with sensible fallbacks.
+// Brand-specific sans: ${family}, system-ui, sans-serif
+// Brand-specific mono: ${family}, ui-monospace, monospace
+// Defaults applied when the reference doesn't specify a monospace family.
+function buildFontStack(family: string | undefined, kind: 'sans' | 'mono'): string {
+  const fallbacks = kind === 'sans'
+    ? 'system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif'
+    : 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+  if (!family) return fallbacks;
+  // Strip any existing surrounding quotes so we don't double-quote.
+  // Reference typography fields are inconsistent — some arrive as `"Geist Mono"`,
+  // others as bare `Geist`. Normalize first, then re-quote only multi-word names.
+  const bare = family.replace(/^["']|["']$/g, '').trim();
+  if (!bare) return fallbacks;
+  const needsQuotes = /\s/.test(bare);
+  const head = needsQuotes ? `"${bare}"` : bare;
+  return `${head}, ${fallbacks}`;
 }
 
 function buildShadcnSection(css: string): string {

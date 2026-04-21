@@ -116,4 +116,57 @@ program
     }
   });
 
+program
+  .command('init')
+  .description('One-shot: generate DESIGN.md from a reference, then scaffold into the project')
+  .option('--reference <id>', 'Reference id (e.g. vercel, stripe, toss)', 'vercel')
+  .option('--dir <path>', 'Project directory', '.')
+  .option('--components <list>', 'Comma-separated component ids (default: core set)')
+  .option('--dark', 'Include dark mode tokens', false)
+  .action(async (opts: { reference: string; dir: string; components?: string; dark: boolean }) => {
+    const { resolve, join } = await import('path');
+    const { writeFileSync, existsSync } = await import('fs');
+    const projectDir = resolve(process.cwd(), opts.dir);
+
+    try {
+      // Step 1: produce DESIGN.md from the chosen reference.
+      const { loadReference } = await import('../src/core/reference-parser.js');
+      const { applyOverrides } = await import('../src/core/customizer.js');
+      const ref = loadReference(opts.reference);
+      const { designMd } = applyOverrides(ref, { darkMode: opts.dark }, 'as-is');
+      const designPath = join(projectDir, 'DESIGN.md');
+      writeFileSync(designPath, designMd, 'utf-8');
+      console.log(`\x1b[32m✓\x1b[0m DESIGN.md written at ${designPath} (based on: ${ref.name})`);
+
+      // Step 2: scaffold into the same directory.
+      const { runScaffold } = await import('../src/scaffold/index.js');
+      const plan = runScaffold({
+        designMdPath: designPath,
+        outDir: projectDir,
+        components: opts.components
+          ? (opts.components.split(',').map((s) => s.trim()) as never)
+          : undefined,
+      });
+      console.log(`\x1b[32m✓\x1b[0m scaffold: ${plan.writes.length} file(s) written`);
+      for (const w of plan.writes) console.log(`  ${w.kind.padEnd(10)} ${w.path}`);
+
+      // Step 3: hint about npm install. If package.json exists in projectDir,
+      // surface a ready-to-paste install command; otherwise tell the user to
+      // initialize a project first.
+      const hasPkg = existsSync(join(projectDir, 'package.json'));
+      if (plan.warnings.length > 0) {
+        console.log('');
+        for (const w of plan.warnings) console.log(`  \x1b[33m!\x1b[0m ${w}`);
+      }
+      if (!hasPkg) {
+        console.log('');
+        console.log(`  \x1b[33m!\x1b[0m No package.json in ${projectDir}. Initialize a project (e.g. \`npm init -y\`) before installing the runtime deps above.`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`\x1b[31m✗\x1b[0m init failed: ${msg}`);
+      process.exit(1);
+    }
+  });
+
 program.parse();

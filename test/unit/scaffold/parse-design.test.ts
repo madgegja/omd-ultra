@@ -52,4 +52,14 @@ describe('parseDesignMd', () => {
     const parsed = parseDesignMd(designMd);
     expect(parsed.name).toBe('Stripe');
   });
+
+  it('captures typography and motion tokens from :root{}', () => {
+    const ref = loadReference('vercel');
+    const { designMd } = applyOverrides(ref, { darkMode: false }, 'as-is');
+    const parsed = parseDesignMd(designMd);
+    expect(parsed.theme.light['--font-sans']).toBeTruthy();
+    expect(parsed.theme.light['--font-mono']).toBeTruthy();
+    expect(parsed.theme.light['--duration-fast']).toBe('120ms');
+    expect(parsed.theme.light['--ease-standard']).toContain('cubic-bezier');
+  });
 });
