@@ -44,7 +44,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/<OWNER>/omd-ultra"
+    "url": "https://github.com/madgegja/omd-ultra"
   },
   "engines": {
     "node": ">=18"
