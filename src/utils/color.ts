@@ -71,11 +71,11 @@ export function generateColorScale(hex: string): ColorScale {
     800: 32, 900: 24, 950: 14,
   };
 
-  const scale = {} as ColorScale;
+  const scale: Record<string, string> = {};
   for (const [key, l] of Object.entries(lightnesses)) {
-    (scale as Record<string, string>)[key] = hslToHex(h, s, l);
+    scale[key] = hslToHex(h, s, l);
   }
-  return scale;
+  return scale as unknown as ColorScale;
 }
 
 /** Determine if a color is "light" (needs dark foreground) */
