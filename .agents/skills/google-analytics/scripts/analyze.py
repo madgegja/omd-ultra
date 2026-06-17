@@ -14,12 +14,10 @@ Usage:
     python analyze.py --analysis-type funnel --steps "homepage,/products,/cart,/checkout"
 """
 
-import os
 import sys
 import json
 import argparse
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 try:
     from ga_client import GoogleAnalyticsClient
@@ -277,13 +275,6 @@ class AnalyticsAnalyzer:
 
         for metric, data in metrics.items():
             change_pct = data["change_percent"]
-
-            if abs(change_pct) < 2:
-                status = "stable"
-            elif change_pct > 0:
-                status = "improving"
-            else:
-                status = "declining"
 
             # Add insights for significant changes
             if abs(change_pct) >= 5:

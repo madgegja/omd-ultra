@@ -19,3 +19,5 @@ research/
 
 # OMC (oh-my-claudecode) session state
 .omc/
+__pycache__/
+*.pyc
